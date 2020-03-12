@@ -5,8 +5,7 @@
         "moduleResolution": "node",
         "lib": [
             "dom",
-            "es5",
-            "es2015"
+            "ESNext"
         ],
         // "strict": true,
         "allowSyntheticDefaultImports": true,
