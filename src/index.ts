@@ -7,6 +7,27 @@ export type MutationHandler<S, P> = (state: S, payload: P) => void
 export type ActionHandler<S, R, G, P, T> = (context: BareActionContext<S, R, G>, payload: P) => Promise<T> | T
 export type GetterHandler<S, R, G, T> = (state: S, getters: G, rootState: R) => T
 
+export interface GetterHandlerTree<S, R, G, T> {
+    [key: string]: GetterHandler<S, R, G, T>;
+}
+export interface ActionHandlerTree<S, R, G, P, T> {
+    [key: string]: ActionHandler<S, R, G, P | void, T | void>
+}
+export interface MutationHandlerTree<S, P> {
+    [key: string]: MutationHandler<S, P | void>
+}
+
+
+export interface StoreAccessors<S, R, G, P, T> {
+    getters: GetterHandlerTree<S, R, G, T>;
+    mutations: MutationHandlerTree<S, P | void>;
+    actions: ActionHandlerTree<S, R, G, P | void, T | void>;
+}
+
+interface AccessorCreationOptions {
+    prefix?: boolean;
+    autoname: boolean;
+}
 
 interface Dictionary<T> { [key: string]: T }
 interface RootStore<R> extends Store<R> { rootGetters?: any }
@@ -137,6 +158,96 @@ class ModuleBuilderImpl<S, R={}, G=any> implements ModuleBuilder<S, R> {
         }
     }
 
+    createGetters<T>(handlerTree: GetterHandlerTree<S, R, G, T>): GetterHandlerTree<S, R, G ,T>
+    createGetters<T>(handlerTree: GetterHandlerTree<S, R, G, T>, opts: AccessorCreationOptions): GetterHandlerTree<S, R, G ,T>
+    createGetters<T>(handlerTree: GetterHandlerTree<S, R, G, T>, opts?: AccessorCreationOptions): GetterHandlerTree<S, R, G ,T>
+    {
+        const getterTree: GetterHandlerTree<S, R, G, T> = {}
+
+    
+
+        for(let [name, handler] of Object.entries(handlerTree))
+        {
+
+            if(opts && opts.prefix) name = `g_${name}`
+
+            if(opts && opts.autoname)
+            { 
+                getterTree[name] = this.read(handler, name)
+            }
+            else 
+            { 
+                getterTree[name] = this.read(handler) 
+            }
+        }
+
+        return getterTree;
+    }
+
+    createMutations<P>(handlerTree: MutationHandlerTree<S, P>): MutationHandlerTree<S, P>
+    createMutations<P>(handlerTree: MutationHandlerTree<S, P | void>, opts: AccessorCreationOptions): MutationHandlerTree<S, P | void>
+    createMutations<P>(handlerTree: MutationHandlerTree<S, P | void>, opts?: AccessorCreationOptions): MutationHandlerTree<S, P | void>
+    {
+        const mutationTree: MutationHandlerTree<S, P | void> = {}
+        for(let [name, handler] of Object.entries(handlerTree))
+        {
+            if(opts && opts.prefix) name = `m_${name}`
+
+            if (opts && opts.autoname) 
+            {
+                mutationTree[name] = this.commit(handler, name)
+            }
+            else
+            {
+                mutationTree[name] = this.commit(handler)
+            } 
+        }
+
+        return mutationTree
+    }
+
+    createActions<P, T>(handlerTree: ActionHandlerTree<S, R, G, void, void>): ActionHandlerTree<S, R, G, P | void, T | void>
+    createActions<P, T>(handlerTree: ActionHandlerTree<S, R, G, P | void, T | void>):  ActionHandlerTree<S, R, G, P | void, T | void>
+    createActions<P, T>(handlerTree: ActionHandlerTree<S, R, G, P | void, T | void>, opts: AccessorCreationOptions):  ActionHandlerTree<S, R, G, P | void, T | void>
+    createActions<P, T>(handlerTree: ActionHandlerTree<S, R, G, P | void, T | void>, opts?: AccessorCreationOptions):  ActionHandlerTree<S, R, G, P | void, T | void>
+    {
+        const actionTree: ActionHandlerTree<S, R, G, P | void, T | void> = {}
+
+        for(let[name, handler] of Object.entries(handlerTree))
+        {
+            if(opts && opts.prefix) name = `a_${name}`
+
+            if(opts && opts.autoname)
+            {                
+                actionTree[name] = this.dispatch(handler, name)
+            } 
+            else 
+            {
+                actionTree[name] = this.dispatch(handler)
+            }
+            
+        }
+
+        return actionTree
+    }
+
+    createAccessors<P, T>(accessors: StoreAccessors<S, R, G, P | void, T| void>): StoreAccessors<S, R, G, P | void, T | void>
+    createAccessors<P, T>(accessors: StoreAccessors<S, R, G, P | void, T| void>, opts: AccessorCreationOptions): StoreAccessors<S, R, G, P | void, T | void>
+    createAccessors<P, T>(accessors: StoreAccessors<S, R, G, P | void, T| void>, opts?: AccessorCreationOptions): StoreAccessors<S, R, G, P | void, T | void>
+    {
+        let defaultOptions: AccessorCreationOptions = {
+            autoname: false,
+            prefix: false
+        }
+        const getters = this.createGetters(accessors.getters, opts || defaultOptions),
+        actions = this.createActions(accessors.actions, opts || defaultOptions),
+        mutations = this.createMutations(accessors.mutations, opts || defaultOptions)
+
+        return {getters, actions, mutations}
+        
+    }
+
+
     vuexModule(): Module<S, R>
     {
         if (!this._vuexModule)
@@ -216,6 +327,20 @@ export interface ModuleBuilder<S, R={}, G=any>
     /** Creates a strongly-typed read function for the provided getter function */
     read<T>(handler: GetterHandler<S, R, G, T>): () => T
     read<T>(handler: GetterHandler<S, R, G, T>, name: string): () => T
+
+    /** Takes multiple handlers at once and creturns a strongly-typed getter tree */
+    createGetters<T>(handlerTree: GetterHandlerTree<S, R, G, T>): GetterHandlerTree<S, R, G | void, T | void>
+
+    /** Takes multiple handlers at once and returns a strongly-typed mutation tree */
+    createMutations<P>(handlerTree: MutationHandlerTree<S, P>): MutationHandlerTree<S, P | void>
+
+    /** Takes multiple handlers at once and returns a strongly-typed mutation tree */
+    createActions<P, T>(handlerTree: ActionHandlerTree<S, R, G, P | void, T | void>): ActionHandlerTree<S, R, G, P | void, T | void>
+
+    /** Takes handler trees for getters, mutations and actions at once and returns strongly-typed  store accessors */
+    createAccessors<P, T>(accessors: StoreAccessors<S, R, G, P | void, T | void>): StoreAccessors<S, R, G, P | void, T | void>
+    
+
 
     /** Creates a method to return this module's state */
     state(): () => S
@@ -322,6 +447,18 @@ export interface StoreBuilder<R>
     /** Creates a strongly-typed read function for the provided getter function */
     read<T>(handler: GetterHandler<R, R, void, T>): () => T
     read<T>(handler: GetterHandler<R, R, void, T>, name: string): () => T
+
+     /** Takes multiple handlers at once and creturns a strongly-typed getter tree */
+     createGetters<T>(handlerTree: GetterHandlerTree<R, R, void, T>): GetterHandlerTree<R, R, void , T | void>
+
+     /** Takes multiple handlers at once and returns a strongly-typed mutation tree */
+     createMutations<P>(handlerTree: MutationHandlerTree<R, P>): MutationHandlerTree<R, P | void>
+ 
+     /** Takes multiple handlers at once and returns a strongly-typed mutation tree */
+     createActions<P, T>(handlerTree: ActionHandlerTree<R, R, void, P | void, T | void>): ActionHandlerTree<R, R, void, P | void, T | void>
+ 
+     /** Takes handler trees for getters, mutations and actions at once and returns strongly-typed  store accessors */
+     createAccessors<P, T>(accessors: StoreAccessors<R, R, void, P | void, T | void>): StoreAccessors<R, R, void, P | void, T | void>
 
     /** Creates a method to return the root state */
     state(): () => R
