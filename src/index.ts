@@ -164,11 +164,8 @@ class ModuleBuilderImpl<S, R={}, G=any> implements ModuleBuilder<S, R> {
     {
         const getterTree: GetterHandlerTree<S, R, G, T> = {}
 
-    
-
         for(let [name, handler] of Object.entries(handlerTree))
         {
-
             if(opts && opts.prefix) name = `g_${name}`
 
             if(opts && opts.autoname)

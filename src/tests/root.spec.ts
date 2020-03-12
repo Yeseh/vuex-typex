@@ -35,5 +35,13 @@ describe("Create a store", () =>
             })
             expect(uppercaseNameGetter()).to.equal("DAVID")
         })
+        it("should add multiple getters", () => {
+            const split = (state: RootState) => state.name.split('a')[0]
+            const lowercaseName = (state: RootState) => state.name.toLowerCase()
+            const getters = storeBuilder.createGetters({split, lowercaseName})
+            const store = storeBuilder.vuexStore({
+                state: { name: "david" }
+            })
+        })
     })
 })

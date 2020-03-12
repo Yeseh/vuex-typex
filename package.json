@@ -12,11 +12,13 @@
     "vuex": "^3.0.1"
   },
   "devDependencies": {
+    "@babel/core": "^7.8.7",
     "@types/chai": "^3.4.35",
     "@types/chai-http": "^0.0.30",
     "@types/jest": "^23.3.13",
     "@types/mocha": "^2.2.40",
     "axios": "^0.16.2",
+    "babel-jest": "^25.1.0",
     "chai": "^3.5.0",
     "growl": "^1.10.5",
     "jest": "^23.0.0",
@@ -59,9 +61,10 @@
       "js"
     ],
     "transform": {
-      "^.+\\.tsx?$": "test-jest"
+      "^.+\\.tsx?$": "ts-jest"
     },
     "testURL": "http://localhost/",
     "testRegex": "src/tests/.*\\.spec.ts$"
-  }
+  },
+  "dependencies": {}
 }
